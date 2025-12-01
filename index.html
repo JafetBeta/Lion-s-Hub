@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIONS HUB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+    <script src="https://www.paypal.com/sdk/js?client-id=AesCkSWnUh-B4U6AJ9YrXVIM-4rmqOlcRuweNQM5ngkdXRKZDfW9ZTLBaf3PlQazg0kbT9Vszm2SCJc5&currency=MXN"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #ff0000, #000000); min-height: 100vh; }
+        .auth-container { background-color: rgba(255, 255, 255, 0.9); border-radius: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
+        .dashboard-card { transition: all 0.3s ease; }
+        .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); }
+        .password-container { position: relative; }
+        .password-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6b7280; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; overflow: auto; animation: fadeIn 0.3s; }
+        .modal-content { background-color: white; margin: 5% auto; padding: 20px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); animation: slideIn 0.3s; }
+        .payment-option { transition: all 0.2s ease; border: 2px solid transparent; }
+        .payment-option:hover { transform: translateY(-2px); }
+        .payment-option.selected { border-color: #ef4444; background-color: #fef2f2; }
+        .ticket-container, .profile-container { background: linear-gradient(135deg, #ff4e50, #f9d423); border-radius: 1rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .number-input { display: flex; align-items: center; }
+        .number-input button { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background-color: #f3f4f6; border: 1px solid #d1d5db; font-size: 1.25rem; cursor: pointer; transition: all 0.2s; }
+        .number-input input { width: 60px; height: 36px; text-align: center; border-top: 1px solid #d1d5db; border-bottom: 1px solid #d1d5db; border-left: none; border-right: none; }
+        .profile-info-item { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.2); }
+        .profile-info-item:last-child { border-bottom: none; }
+        .lions-btn { background-color: #ef4444; color: white; transition: all 0.3s ease; }
+        .lions-btn:hover { background-color: #dc2626; }
+
+        /* --- ESTILOS ADAPTADOS DE LA PÁGINA DE RUTAS --- */
+        .routes-section { display: grid; grid-template-columns: 1fr; gap: 30px; color: #333; }
+        @media (min-width: 768px) { .routes-section { grid-template-columns: 1fr 2fr; } }
+        .routes-list { background: #f9fafb; border-radius: 15px; padding: 25px; border: 1px solid #e5e7eb; max-height: 60vh; overflow-y: auto; }
+        .section-title { font-size: 1.5rem; margin-bottom: 20px; text-align: center; color: #ef4444; }
+        .city-section { margin-bottom: 30px; }
+        .city-header { display: flex; align-items: center; margin-bottom: 15px; font-size: 1.3rem; font-weight: bold; }
+        .city-icon { margin-right: 10px; font-size: 1.5rem; }
+        .city-price { margin-left: auto; background: #ef4444; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; }
+        .route-item { background: #ffffff; margin: 10px 0; padding: 15px; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; border-left: 4px solid transparent; border: 1px solid #e5e7eb; }
+        .route-item:hover { background: #fef2f2; transform: translateX(5px); }
+        .route-item.selected { background: #fef2f2; border-left-color: #ef4444; }
+        .route-name { font-weight: bold; margin-bottom: 5px; }
+        .route-preview { font-size: 0.9rem; opacity: 0.8; }
+        .route-details { background: #f9fafb; border-radius: 15px; padding: 25px; border: 1px solid #e5e7eb; min-height: 400px; max-height: 60vh; overflow-y: auto;}
+        .route-info { display: none; }
+        .route-info.active { display: block; animation: fadeIn 0.5s ease; }
+        .route-title { font-size: 1.8rem; margin-bottom: 20px; color: #ef4444; text-align: center; }
+        .info-section { margin-bottom: 25px; }
+        .info-title { font-size: 1.2rem; margin-bottom: 10px; color: #ef4444; display: flex; align-items: center; }
+        .info-icon { margin-right: 8px; }
+        .stops-list { list-style: none; margin-left: 20px; }
+        .stops-list li { margin: 8px 0; padding: 8px 15px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; position: relative; }
+        .stops-list li::before { content: "🚏"; margin-right: 10px; }
+        .schedule-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-left: 20px; }
+        @media (min-width: 640px) { .schedule-grid { grid-template-columns: 1fr 1fr; } }
+        .schedule-item { background: #ffffff; border: 1px solid #e5e7eb; padding: 10px 15px; border-radius: 8px; text-align: center; }
+        .default-message { text-align: center; padding: 60px 20px; opacity: 0.7; }
+        .default-message h3 { font-size: 1.5rem; margin-bottom: 15px; color: #ef4444; }
+        
+        /* --- MEJORA UX/DESIGN MÓVIL --- */
+        /* --- CORRECCIONES RESPONSIVE (PEGAR ESTO AL FINAL DEL STYLE) --- */
+
+    /* 1. Lista de rutas: altura fija en celular para poder ver el resto */
+    .routes-list {
+        height: 250px; 
+        overflow-y: auto;
+        margin-bottom: 20px;
+        padding: 10px;
+    }
+    
+    /* En PC vuelve a la normalidad */
+    @media (min-width: 768px) {
+        .routes-list {
+            height: auto;
+            max-height: 60vh;
+            margin-bottom: 0;
+        }
+    }
+
+    /* 2. Paradas en dos columnas para ahorrar espacio vertical */
+    .stops-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 8px;
+        margin-left: 0;
+        padding: 0;
+    }
+    
+    .stops-list li {
+        margin: 0;
+        font-size: 0.85rem; /* Letra un poco más chica */
+    }
+
+    /* 3. Botones de cantidad más grandes y fáciles de tocar */
+    .number-input {
+        width: 100%;
+        max-width: 180px;
+    }
+    .number-input button {
+        width: 45px;
+        height: 45px;
+        background-color: #ef4444;
+        color: white;
+        border: none;
+        font-weight: bold;
+    }
+    .number-input input {
+        flex: 1;
+        height: 45px;
+        font-weight: bold;
+        border-color: #ef4444;
+    }
+
+    /* 4. Ajuste para que el detalle no tenga scroll doble */
+    .route-details {
+        max-height: none; 
+        padding: 10px;
+    }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-2 py-6 sm:px-4 sm:py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-white mb-2">LIONS HUB</h1>
+            <p class="text-white text-lg sm:text-xl">Tu acceso a servicios escolares</p>
+        </header>
+
+        <div id="authContainer" class="auth-container max-w-md mx-auto p-6">
+            <div class="flex mb-6 border-b">
+                <button id="loginTab" class="w-1/2 py-2 font-medium text-center text-red-600 border-b-2 border-red-600">Iniciar Sesión</button>
+                <button id="registerTab" class="w-1/2 py-2 font-medium text-center text-gray-500">Registrarse</button>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="loginEmail" class="block text-sm font-medium text-gray-700 mb-1">Correo Electrónico</label>
+                    <input type="email" id="loginEmail" name="loginEmail" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+                    <div class="password-container">
+                        <input type="password" id="loginPassword" name="loginPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md" required>
+                        <span class="password-toggle" onclick="togglePasswordVisibility('loginPassword', 'loginEyeIcon')"><svg id="loginEyeIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></span>
+                    </div>
+                </div>
+                <button type="submit" class="w-full lions-btn py-2 px-4 rounded-md">Iniciar Sesión</button>
+            </form>
+            <form id="registerForm" class="space-y-3 hidden">
+                <div><label for="registerNombre" class="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label><input type="text" id="registerNombre" name="registerNombre" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                <div><label for="registerEmail" class="block text-sm font-medium text-gray-700 mb-1">Correo Institucional</label><input type="email" id="registerEmail" name="registerEmail" placeholder="ejemplo@utmatamoros.edu.mx" pattern=".+@utmatamoros\.edu\.mx" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label for="registerMatricula" class="block text-sm font-medium text-gray-700 mb-1">Matrícula</label><input type="text" id="registerMatricula" name="registerMatricula" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                    <div><label for="registerTelefono" class="block text-sm font-medium text-gray-700 mb-1">Teléfono</label><input type="tel" id="registerTelefono" name="registerTelefono" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                </div>
+                
+                <div><label for="registerCarrera" class="block text-sm font-medium text-gray-700 mb-1">Carrera</label><input type="text" id="registerCarrera" name="registerCarrera" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div><label for="registerCuatrimestre" class="block text-sm font-medium text-gray-700 mb-1">Cuatrimestre</label><select id="registerCuatrimestre" name="registerCuatrimestre" class="w-full px-3 py-2 border border-gray-300 rounded-md" required><option value="" disabled selected>Elige</option><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option></select></div>
+                    <div><label for="registerGrupo" class="block text-sm font-medium text-gray-700 mb-1">Grupo</label><input type="text" id="registerGrupo" name="registerGrupo" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                    <div><label for="registerTurno" class="block text-sm font-medium text-gray-700 mb-1">Turno</label><select id="registerTurno" name="registerTurno" class="w-full px-3 py-2 border border-gray-300 rounded-md" required><option value="" disabled selected>Elige</option><option value="Matutino">Matutino</option><option value="Vespertino">Vespertino</option></select></div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div><label for="registerPassword" class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label><input type="password" id="registerPassword" name="registerPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                    <div><label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1">Confirmar</label><input type="password" id="confirmPassword" name="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md" required></div>
+                </div>
+                
+                <button type="submit" class="w-full lions-btn py-2 px-4 rounded-md">Registrarse</button>
+            </form>
+        </div>
+
+        <div id="dashboardContainer" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800">Bienvenido, <span id="studentName">Estudiante</span></h2>
+                    <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">Cerrar Sesión</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div id="ticketsCard" class="dashboard-card bg-gradient-to-br from-red-500 to-orange-400 rounded-lg p-6 text-white cursor-pointer">
+                        <div class="flex flex-col items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg><h3 class="text-xl font-bold mb-2">Compra de Boletos</h3><p class="text-center text-white text-opacity-80">Adquiere boletos para autobús</p></div>
+                    </div>
+                    <div id="profileCard" class="dashboard-card bg-gradient-to-br from-red-600 to-orange-500 rounded-lg p-6 text-white cursor-pointer">
+                        <div class="flex flex-col items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg><h3 class="text-xl font-bold mb-2">Perfil del Estudiante</h3><p class="text-center text-white text-opacity-80">Gestiona tu información</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="ticketsModal" class="modal">
+            <div class="modal-content md:max-w-6xl text-gray-800">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800">Compra de Boletos</h3>
+                    <button id="closeTicketsModal" class="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+                </div>
+                
+                <div id="ticketSelectionStep">
+                    <div class="routes-section">
+                        <div class="routes-list">
+                            <h3 class="section-title">Selecciona tu Ruta</h3>
+                            <div class="city-section">
+                                <div class="city-header"><span class="city-icon">🚌</span> <span>Rutas de Matamoros</span> <span class="city-price">$10 MXN</span></div>
+                                <div class="route-item" data-route-id="sendero" data-route="Ruta Sendero – COPPEL Sendero" data-price="10"><div class="route-name">Ruta Sendero – COPPEL Sendero</div><div class="route-preview">6 paradas • 5:40-7:00 AM / 4:40-5:00 PM</div></div>
+                                <div class="route-item" data-route-id="lauro" data-route="Ruta Lauro Villar" data-price="10"><div class="route-name">Ruta Lauro Villar</div><div class="route-preview">Ruta directa • 5:40-7:00 AM / 4:40-5:00 PM</div></div>
+                                <div class="route-item" data-route-id="laguneta" data-route="Ruta Laguneta" data-price="10"><div class="route-name">Ruta Laguneta</div><div class="route-preview">Ruta directa • 6:00 AM / 4:40 PM</div></div>
+                                <div class="route-item" data-route-id="presidentes" data-route="Ruta Presidentes" data-price="10"><div class="route-name">Ruta Presidentes</div><div class="route-preview">6 paradas • 4:40 AM / 4:40 PM</div></div>
+                                <div class="route-item" data-route-id="avdelnino" data-route="Ruta Av. del Niño" data-price="10"><div class="route-name">Ruta Av. del Niño</div><div class="route-preview">4 paradas • 5:40 AM / 4:40 PM</div></div>
+                                <div class="route-item" data-route-id="plazafiesta" data-route="Ruta Plaza Fiesta" data-price="10"><div class="route-name">Ruta Plaza Fiesta</div><div class="route-preview">Ruta directa • 5:40-7:00 AM / 4:40-5:00 PM</div></div>
+                                <div class="route-item" data-route-id="brisas" data-route="Ruta Brisas" data-price="10"><div class="route-name">Ruta Brisas</div><div class="route-preview">2 paradas • 5:40 AM / 4:40 PM</div></div>
+                                <div class="route-item" data-route-id="cima" data-route="Ruta CIMA – Canadá" data-price="10"><div class="route-name">Ruta CIMA – Canadá</div><div class="route-preview">9 paradas • 6:30 AM / 4:40 PM</div></div>
+                            </div>
+                            <div class="city-section">
+                                <div class="city-header"><span class="city-icon">🚌</span> <span>Rutas de Valle Hermoso</span> <span class="city-price">$20 MXN</span></div>
+                                <div class="route-item" data-route-id="vallehermoso" data-route="Ruta Valle Hermoso" data-price="20"><div class="route-name">Ruta Valle Hermoso</div><div class="route-preview">4 paradas • 6:30 AM / 4:40 PM</div></div>
+                            </div>
+                        </div>
+                        <div class="route-details">
+                            <div class="default-message" id="defaultMessage">
+                                <h3>🚌 Bienvenido</h3>
+                                <p>Selecciona una ruta de la lista para ver sus paradas y horarios.</p>
+                            </div>
+                            <div class="route-info" id="sendero"><h3 class="route-title">Ruta Sendero – COPPEL Sendero</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Quesos San Miguel (Av. Constituyentes)</li><li>Ferretería El Castor</li><li>Farmacia Guadalajara (Constituyentes)</li><li>Entrada Fracc. Nuevo Amanecer</li><li>Entrada a Guardería</li><li>Parque Industrial Inteva (frente a sus Blanquita)</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>5:40 - 7:00 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 - 5:00 PM</div></div></div></div>
+                            <div class="route-info" id="lauro"><h3 class="route-title">Ruta Lauro Villar</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Estacionamiento de Farmacia Similares (Lauro Villar)</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">ℹ️</span>Detalles</h4><p style="margin-left: 20px;">Ruta directa hasta la universidad</p></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>5:40 - 7:00 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 - 5:00 PM</div></div></div></div>
+                            <div class="route-info" id="laguneta"><h3 class="route-title">Ruta Laguneta</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Estacionamiento de Soriana Laguneta</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">ℹ️</span>Detalles</h4><p style="margin-left: 20px;">Ruta directa hasta la universidad</p></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>6:00 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 PM</div></div></div></div>
+                            <div class="route-info" id="presidentes"><h3 class="route-title">Ruta Presidentes</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Oxxo Presidentes</li><li>Gasolinera Emilio Portes Gil</li><li>Gasera (entrada a Lala)</li><li>Puente peatonal Los Arados</li><li>Puente del Rastro</li><li>Ferretería El Castor (Constituyentes)</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>4:40 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 PM</div></div></div></div>
+                            <div class="route-info" id="avdelnino"><h3 class="route-title">Ruta Av. del Niño</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Estacionamiento de Chedraui</li><li>Casa Ej. 20 de Noviembre</li><li>Super Colchones</li><li>Refaccionaria Treviño (Pedro Cárdenas)</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>5:40 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 PM</div></div></div></div>
+                            <div class="route-info" id="plazafiesta"><h3 class="route-title">Ruta Plaza Fiesta</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Barda de la gasera (frente a Elektra)</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">ℹ️</span>Detalles</h4><p style="margin-left: 20px;">Ruta directa hasta la universidad</p></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>5:40 - 7:00 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 - 5:00 PM</div></div></div></div>
+                            <div class="route-info" id="brisas"><h3 class="route-title">Ruta Brisas</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Estacionamiento de Smart Las Brisas</li><li>Ferretería El Castor (Constituyentes)</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>5:40 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 PM</div></div></div></div>
+                            <div class="route-info" id="cima"><h3 class="route-title">Ruta CIMA – Canadá</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Oxxo Fracc. Canadá</li><li>Adient</li><li>Puente peatonal Fracc. Cima</li><li>Vulcanizadora frente al TEC</li><li>Frente a Bodega Aurrerá</li><li>Entrada Campestre del Río (Oxxo)</li><li>Entrada a México Agrario (Muro Autopartes)</li><li>IMSS Lauro Villar</li><li>Farmacia Similares (Soriana Lauro Villar)</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>6:30 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 PM</div></div></div></div>
+                            <div class="route-info" id="vallehermoso"><h3 class="route-title">Ruta Valle Hermoso</h3><div class="info-section"><h4 class="info-title"><span class="info-icon">📍</span>Puntos de Parada</h4><ul class="stops-list"><li>Plaza Principal</li><li>Poblado Anáhuac (Gasolinera)</li><li>Control (Oxxo)</li><li>Entrada Ej. Cárdenas</li></ul></div><div class="info-section"><h4 class="info-title"><span class="info-icon">🕐</span>Horarios</h4><div class="schedule-grid"><div class="schedule-item"><strong>Mañana</strong><br>6:30 AM</div><div class="schedule-item"><strong>Tarde</strong><br>4:40 PM</div></div></div></div>
+                        </div>
+                    </div>
+                    <hr class="my-6">
+                   <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <div class="space-y-4">
+            <div class="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200">
+                <span class="text-sm font-bold text-gray-700">Cantidad de boletos:</span>
+                <div class="number-input">
+                    <button type="button" class="rounded-l-lg hover:bg-red-600 transition" onclick="decreaseValue()">-</button>
+                    <input type="number" id="ticketQuantity" value="1" readonly class="focus:outline-none">
+                    <button type="button" class="rounded-r-lg hover:bg-red-600 transition" onclick="increaseValue()">+</button>
+                </div>
+            </div>
+
+            <div>
+                <p class="text-xs font-bold text-gray-500 uppercase mb-2">Método de pago</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="payment-option p-3 rounded-lg border-2 cursor-pointer text-center bg-white hover:bg-gray-50 transition" data-payment="online">
+                        <div class="text-2xl mb-1">💳</div>
+                        <h5 class="text-sm font-bold">En línea</h5>
+                        <span class="text-xs text-green-600">PayPal / Tarjeta</span>
+                    </div>
+                    <div class="payment-option p-3 rounded-lg border-2 cursor-pointer text-center bg-white hover:bg-gray-50 transition" data-payment="physical">
+                        <div class="text-2xl mb-1">💵</div>
+                        <h5 class="text-sm font-bold">Efectivo</h5>
+                        <span class="text-xs text-gray-500">Pago físico</span>
+                    </div>
+                </div>
+                <div id="paypal-button-container" class="hidden mt-4"></div>
+            </div>
+        </div>
+
+        <div class="flex flex-col justify-center bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <h4 class="text-gray-500 text-sm font-medium mb-2">Resumen de compra</h4>
+            <p id="selectedRouteText" class="text-gray-800 text-sm mb-1 truncate">Ruta: <span class="font-bold">Selecciona una ruta</span></p>
+            
+            <div class="my-3 border-t border-gray-100"></div>
+            
+           <div class="flex justify-between items-end mb-4">
+            <span class="text-gray-600 font-medium">Total a pagar:</span>
+             <p class="text-3xl font-bold text-red-600 flex items-baseline">
+            <span id="displayPrice">$0</span> 
+            <span class="text-sm text-gray-500 font-normal ml-1">MXN</span>
+            </p>
+            </div>
+            
+            <button id="continueBtn" class="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-red-700 active:transform active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                Continuar Compra
+            </button>
+        </div>
+    </div>
+</div>
+                </div>
+
+                <div id="ticketConfirmationStep" class="hidden">
+                    <div class="ticket-container p-6 text-white mb-6"><div class="text-center mb-4"><h4 class="text-xl font-bold">Boleto de Autobús</h4></div><div class="grid grid-cols-2 gap-4 mb-4"><div><p class="text-sm opacity-80">Destino:</p><p id="confirmDestination" class="font-medium"></p></div><div><p class="text-sm opacity-80">Cantidad:</p><p id="confirmQuantity" class="font-medium"></p></div><div><p class="text-sm opacity-80">Método de pago:</p><p id="confirmPayment" class="font-medium"></p></div><div><p class="text-sm opacity-80">Total:</p><p id="confirmTotal" class="font-medium"></p></div></div><div class="flex justify-center"><div id="qrcode" class="bg-white p-2 rounded"></div></div></div>
+                    <div class="flex justify-between"><button id="backBtn" class="bg-gray-500 text-white px-4 py-2 rounded-md">Volver</button><button id="confirmBtn" class="lions-btn px-4 py-2 rounded-md">Confirmar Compra</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="profileModal" class="modal">
+            <div class="modal-content">
+                <div class="flex justify-between items-center mb-6"><h3 class="text-2xl font-bold text-gray-800">Perfil del Estudiante</h3><button id="closeProfileModal" class="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button></div>
+                <div class="profile-container p-6 text-white mb-6">
+                    <div class="flex items-center mb-6"><div class="bg-white rounded-full p-2 mr-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg></div><div><h4 id="profileName" class="text-xl font-bold"></h4><p class="text-sm opacity-80">Estudiante Activo</p></div></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="profile-info-item"><p class="text-sm opacity-80">Correo:</p><p id="profileEmail" class="font-medium"></p></div>
+                        <div class="profile-info-item"><p class="text-sm opacity-80">Matrícula:</p><p id="profileMatricula" class="font-medium"></p></div>
+                        <div class="profile-info-item"><p class="text-sm opacity-80">Carrera:</p><p id="profileCarrera" class="font-medium"></p></div>
+                        <div class="profile-info-item"><p class="text-sm opacity-80">Grupo:</p><p id="profileGrupo" class="font-medium"></p></div>
+                        <div class="profile-info-item"><p class="text-sm opacity-80">Turno:</p><p id="profileTurno" class="font-medium"></p></div>
+                        <div class="profile-info-item"><p class="text-sm opacity-80">Cuatrimestre:</p><p id="profileCuatrimestre" class="font-medium"></p></div>
+                    </div>
+                    <div class="flex justify-center"><div class="text-center"><p class="text-sm opacity-80 mb-2">Credencial Digital:</p><div id="profileQRCode" class="bg-white p-2 rounded"></div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center mt-8 text-white text-sm">
+            <p>© 2025 LIONS HUB</p>
+        </footer>
+    </div>
+    <script>
+    // --- SELECCIÓN DE ELEMENTOS DEL DOM ---
+    const loginTab = document.getElementById('loginTab'), registerTab = document.getElementById('registerTab');
+    const loginForm = document.getElementById('loginForm'), registerForm = document.getElementById('registerForm');
+    const authContainer = document.getElementById('authContainer'), dashboardContainer = document.getElementById('dashboardContainer');
+    const logoutBtn = document.getElementById('logoutBtn'), ticketsCard = document.getElementById('ticketsCard'), profileCard = document.getElementById('profileCard');
+    const studentName = document.getElementById('studentName');
+    const ticketsModal = document.getElementById('ticketsModal'), closeTicketsModal = document.getElementById('closeTicketsModal');
+    const ticketSelectionStep = document.getElementById('ticketSelectionStep'), ticketConfirmationStep = document.getElementById('ticketConfirmationStep');
+    
+    const allRouteItems = document.querySelectorAll('.route-item'); // Selector para las rutas
+    const paymentOptions = document.querySelectorAll('.payment-option');
+
+    const selectedRouteText = document.getElementById('selectedRouteText'), totalPriceText = document.getElementById('totalPriceText');
+    const ticketQuantity = document.getElementById('ticketQuantity'), continueBtn = document.getElementById('continueBtn');
+    const backBtn = document.getElementById('backBtn'), confirmBtn = document.getElementById('confirmBtn');
+    const confirmDestination = document.getElementById('confirmDestination'), confirmQuantity = document.getElementById('confirmQuantity');
+    const confirmPayment = document.getElementById('confirmPayment'), confirmTotal = document.getElementById('confirmTotal');
+    const profileModal = document.getElementById('profileModal'), closeProfileModal = document.getElementById('closeProfileModal');
+    const profileName = document.getElementById('profileName'), profileEmail = document.getElementById('profileEmail');
+    const profileMatricula = document.getElementById('profileMatricula'), profileCarrera = document.getElementById('profileCarrera');
+    
+    const profileGrupo = document.getElementById('profileGrupo'), profileTurno = document.getElementById('profileTurno');
+    const profileCuatrimestre = document.getElementById('profileCuatrimestre');
+    
+    // --- VARIABLES GLOBALES ---
+    let selectedRoute = null, selectedPayment = null, quantity = 1, totalPrice = 0;
+
+    // --- LÓGICA DE LA APLICACIÓN (AUTENTICACIÓN) ---
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const response = await fetch('api/perfil.php');
+            const result = await response.json();
+            if (result.success) loadDashboard(result.data);
+        } catch (error) {
+            console.error("Error al verificar la sesión:", error);
+        }
+    });
+
+    function loadDashboard(userData) {
+        studentName.textContent = userData.nombre || 'Estudiante';
+        profileName.textContent = userData.nombre || 'No disponible';
+        profileEmail.textContent = userData.email || 'No disponible';
+        profileMatricula.textContent = userData.matricula || 'No disponible';
+        profileCarrera.textContent = userData.carrera || 'No asignada';
+        profileGrupo.textContent = userData.grupo || 'No asignado';
+        profileTurno.textContent = userData.turno || 'No asignado';
+        profileCuatrimestre.textContent = userData.cuatrimestre || 'No asignado';
+        const profileData = `Nombre: ${userData.nombre}\nMatrícula: ${userData.matricula}`;
+        generateQRCode(profileData, 'profileQRCode');
+        authContainer.classList.add('hidden');
+        dashboardContainer.classList.remove('hidden');
+    }
+
+    registerForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+            const response = await fetch('api/registrar.php', { method: 'POST', body: new FormData(registerForm) });
+            const result = await response.json();
+            alert(result.message);
+            if (result.success) {
+                registerForm.reset();
+                loginTab.click();
+            }
+        } catch (error) {
+            alert("Error de conexión. Inténtalo de nuevo.");
+        }
+    });
+
+    loginForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        try {
+            const response = await fetch('api/login.php', { method: 'POST', body: new FormData(loginForm) });
+            const result = await response.json();
+            if (result.success) {
+                const profileResponse = await fetch('api/perfil.php');
+                const profileResult = await profileResponse.json();
+                if (profileResult.success) loadDashboard(profileResult.data);
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            alert("Error de conexión. Inténtalo de nuevo.");
+        }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+        await fetch('api/logout.php');
+        window.location.reload(); // Recargar la página para limpiar todo
+    });
+
+    confirmBtn.addEventListener('click', async () => {
+        const purchaseData = new URLSearchParams({
+            'destino': selectedRoute.getAttribute('data-route'),
+            'cantidad': quantity, 'total': totalPrice, 'pago': selectedPayment
+        });
+        try {
+            const response = await fetch('api/comprar_boleto.php', { method: 'POST', body: purchaseData });
+            const result = await response.json();
+            alert(result.message);
+            if (result.success) ticketsModal.style.display = 'none';
+        } catch (error) {
+            alert("Error de conexión. Inténtalo de nuevo.");
+        }
+    });
+
+    // --- FUNCIONES DE LA INTERFAZ DE USUARIO (UI) ---
+    function togglePasswordVisibility(inputId, iconId) {
+        const input = document.getElementById(inputId), icon = document.getElementById(iconId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />`;
+        } else {
+            input.type = 'password';
+            icon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />`;
+        }
+    }
+    function increaseValue() { if (quantity < 10) { quantity++; ticketQuantity.value = quantity; updateTotalPrice(); } }
+    function decreaseValue() { if (quantity > 1) { quantity--; ticketQuantity.value = quantity; updateTotalPrice(); } }
+    function updateTotalPrice() { 
+    if (selectedRoute) { 
+        // 1. Calcular el total
+        totalPrice = parseInt(selectedRoute.getAttribute('data-price')) * quantity; 
+        
+        // 2. Actualizar el texto en pantalla (Solo el número)
+        const displayElement = document.getElementById('displayPrice');
+        if (displayElement) {
+            displayElement.textContent = `$${totalPrice}`;
+        }
+        
+        // Opcional: Actualizar también el texto del botón si quieres que diga "Pagar $X"
+        // document.getElementById('totalPriceText').textContent = ... (si lo usas en otro lado)
+    } 
+    }
+    function checkSelections() { continueBtn.disabled = !(selectedRoute && selectedPayment); }
+    function generateQRCode(data, elementId) { const qr = qrcode(0, 'M'); qr.addData(data); qr.make(); document.getElementById(elementId).innerHTML = qr.createImgTag(5); }
+
+    loginTab.addEventListener('click', () => { registerForm.classList.add('hidden'); loginForm.classList.remove('hidden'); loginTab.classList.add('text-red-600', 'border-red-600'); loginTab.classList.remove('text-gray-500'); registerTab.classList.remove('text-red-600', 'border-red-600'); });
+    registerTab.addEventListener('click', () => { loginForm.classList.add('hidden'); registerForm.classList.remove('hidden'); registerTab.classList.add('text-red-600', 'border-red-600'); registerTab.classList.remove('text-gray-500'); loginTab.classList.remove('text-red-600', 'border-red-600'); });
+    
+    ticketsCard.addEventListener('click', () => { ticketsModal.style.display = 'block'; });
+    profileCard.addEventListener('click', () => { profileModal.style.display = 'block'; });
+    
+    // --- LÍNEA CORREGIDA ---
+    closeTicketsModal.addEventListener('click', () => { ticketsModal.style.display = 'none'; });
+    // --- FIN DE LA CORRECCIÓN ---
+
+    closeProfileModal.addEventListener('click', () => { profileModal.style.display = 'none'; });
+    
+    // --- LÓGICA DE SELECCIÓN DE RUTA (NUEVA) ---
+    allRouteItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const routeId = this.getAttribute('data-route-id');
+            document.getElementById('defaultMessage').style.display = 'none';
+            document.querySelectorAll('.route-info').forEach(route => route.classList.remove('active'));
+            const selectedRouteInfo = document.getElementById(routeId);
+            if (selectedRouteInfo) selectedRouteInfo.classList.add('active');
+
+            allRouteItems.forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            selectedRoute = this;
+            selectedRouteText.querySelector('span').textContent = this.getAttribute('data-route');
+            updateTotalPrice();
+            checkSelections();
+        });
+    });
+
+    // --- LÓGICA DE PAGO (SIN CAMBIOS) ---
+    paymentOptions.forEach(o => o.addEventListener('click', function() {
+    paymentOptions.forEach(opt => opt.classList.remove('selected'));
+    this.classList.add('selected');
+    selectedPayment = this.getAttribute('data-payment');
+    
+    const paypalContainer = document.getElementById('paypal-button-container');
+    const continueBtn = document.getElementById('continueBtn');
+
+    if (selectedPayment === 'online') {
+        paypalContainer.classList.remove('hidden');
+        continueBtn.classList.add('hidden'); // Ocultamos el botón "Continuar" normal
+        renderPayPalButtons(); // Renderizamos los botones de PayPal
+    } else {
+        paypalContainer.classList.add('hidden');
+        continueBtn.classList.remove('hidden'); // Mostramos el botón normal para efectivo
+        document.getElementById('paypal-button-container').innerHTML = ''; // Limpiamos PayPal para evitar duplicados
+    }
+    
+    checkSelections();
+}));
+
+function renderPayPalButtons() {
+    // Limpiamos el contenedor por si acaso
+    document.getElementById('paypal-button-container').innerHTML = '';
+
+    paypal.Buttons({
+        // Configurar la transacción
+        createOrder: function(data, actions) {
+            // Recalculamos el total aquí para enviarlo a PayPal
+            // Nota: El backend hará su propia validación de precio, pero PayPal necesita saber cuánto cobrar.
+            const pricePerTicket = selectedRoute.getAttribute('data-price');
+            const totalAmount = pricePerTicket * quantity;
+
+            return actions.order.create({
+                purchase_units: [{
+                    amount: {
+                        value: totalAmount,
+                        currency_code: 'MXN' // Asegúrate que tu cuenta PayPal acepte MXN
+                    },
+                    description: `Boleto: ${selectedRoute.getAttribute('data-route')} (x${quantity})`
+                }]
+            });
+        },
+        // Cuando el pago es aprobado
+        onApprove: function(data, actions) {
+            return actions.order.capture().then(function(details) {
+                // El pago fue exitoso, ahora registramos en NUESTRO backend
+                registrarCompraBackend('paypal', data.orderID);
+            });
+        },
+        onError: function (err) {
+            console.error('Error en PayPal', err);
+            alert('Hubo un error con el pago. Inténtalo de nuevo.');
+        }
+    }).render('#paypal-button-container');
+}
+
+// Función unificada para registrar la compra (usada por botón Físico y por PayPal)
+async function registrarCompraBackend(metodo, paypalOrderID = null) {
+    const purchaseData = {
+        destino: selectedRoute.getAttribute('data-route'),
+        cantidad: quantity,
+        pago: metodo,
+        paypal_order_id: paypalOrderID
+    };
+
+    try {
+        const response = await fetch('api/comprar_boleto.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(purchaseData)
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('¡Compra exitosa!');
+            // Generar QR y mostrar confirmación (tu lógica existente)
+            confirmDestination.textContent = selectedRoute.getAttribute('data-route');
+            confirmQuantity.textContent = `${quantity} boleto(s)`;
+            confirmPayment.textContent = metodo === 'paypal' ? 'PayPal' : 'Efectivo';
+            
+            // Usamos el precio del DOM solo para visualización
+            const displayTotal = parseInt(selectedRoute.getAttribute('data-price')) * quantity;
+            confirmTotal.textContent = `$${displayTotal} MXN`;
+            
+            const qrData = `Destino: ${purchaseData.destino}, Cantidad: ${quantity}, ID: ${result.message}`; // Puedes ajustar esto
+            generateQRCode(qrData, 'qrcode');
+            
+            ticketSelectionStep.classList.add('hidden');
+            ticketConfirmationStep.classList.remove('hidden');
+            ticketsModal.scrollTop = 0; // Subir al inicio del modal
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Error de conexión al registrar el boleto.");
+    }
+}
+
+// Modificar tu listener del botón continuar (SOLO para pago físico)
+continueBtn.addEventListener('click', () => {
+    if (selectedPayment === 'physical') {
+        registrarCompraBackend('physical');
+    }
+});
+</script>
+    
+</body>
+</html>
